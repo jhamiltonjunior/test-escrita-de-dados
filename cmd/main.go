@@ -8,7 +8,7 @@ import (
 
 func main() {
 	mysql := connectdb.MySQLConnect{}
-	db, err := connectdb.NewConnectionDB(&mysql, "127.0.0.1", "root", "0000", "teste_escrita_de_dados")
+	db, err := connectdb.NewConnectionDB(&mysql, "127.0.0.1", "root", "0000", "teste_leitura_de_dados")
 	if err != nil {
 		return
 	}
@@ -24,6 +24,17 @@ func main() {
 		}
 	}(rows)
 
+	db2, err := connectdb.NewConnectionDB(&mysql, "127.0.0.1", "root", "0000", "teste_escrita_de_dados")
+	if err != nil {
+		return
+	}
+
+	password := "securepassword"
+	createAt := "2024-08-14 10:00:00"
+	updateAt := "2024-08-14 10:00:00"
+	deleteAt := "NULL" // ou use "2024-08-14 10:00:00" para uma data
+	active := 1
+
 	// Iterando sobre os resultados
 	for rows.Next() {
 		var id int
@@ -33,6 +44,16 @@ func main() {
 			panic(err)
 		}
 		fmt.Printf("ID: %d, Name: %s, Email: %s\n", id, name, email)
+
+		query := fmt.Sprintf(
+			"INSERT INTO `users`(`id`, `name`, `email`, `password`, `create_at`, `update_at`, `delete_at`, `active`) VALUES ('%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d')",
+			id, name, email, password, createAt, updateAt, deleteAt, active,
+		)
+
+		_, err = db2.Query(query)
+		if err != nil {
+			return
+		}
 	}
 
 	fmt.Println("cu")
