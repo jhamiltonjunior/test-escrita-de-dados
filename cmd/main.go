@@ -32,7 +32,7 @@ func main() {
 	password := "securepassword"
 	createAt := "2024-08-14 10:00:00"
 	updateAt := "2024-08-14 10:00:00"
-	deleteAt := "NULL" // ou use "2024-08-14 10:00:00" para uma data
+	deleteAt := "NULL"
 	active := 1
 
 	// Iterando sobre os resultados
@@ -50,11 +50,11 @@ func main() {
 			id, name, email, password, createAt, updateAt, deleteAt, active,
 		)
 
-		_, err = db2.Query(query)
+		_, err = db2.Exec(query)
 		if err != nil {
-			return
+			panic(err)
 		}
 	}
 
-	fmt.Println("cu")
+	fmt.Println("Transferência de dados concluída")
 }
