@@ -7,6 +7,7 @@ import (
 	connectdb "github.com/jhamiltonjunior/test-escrita-de-dados/model"
 	"io"
 	"net/http"
+	"runtime"
 	"time"
 )
 
@@ -17,9 +18,41 @@ type User struct {
 	Password string `json:"username"`
 }
 
+func printStatus(totalInserts int, start time.Time) {
+	// Limpa a tela (opcional, dependendo do sistema operacional)
+	fmt.Print("\033[H\033[2J")
+
+	// Tempo de execução
+	elapsed := time.Since(start)
+
+	// Memória utilizada
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	alloc := m.Alloc / 1024 / 1024 // Memória alocada em MB
+
+	// Imprimindo as informações
+	fmt.Printf("Total de Dados Inseridos: %d\n", totalInserts)
+	fmt.Printf("Tempo de Execução: %s\n", elapsed)
+	fmt.Printf("Memória Utilizada: %d MB\n", alloc)
+}
+
 func main() {
 	initialTime := time.Now()
 	mysql := connectdb.MySQLConnect{}
+
+	start := time.Now()
+
+	totalInserts := 0
+	go func() {
+		for i := 0; i < 100; i++ {
+			// Simulando inserção de dados
+			time.Sleep(100 * time.Millisecond)
+			totalInserts += 10
+
+			// Atualiza o terminal
+			printStatus(totalInserts, start)
+		}
+	}()
 
 	actual := 0
 	ln := 1000
