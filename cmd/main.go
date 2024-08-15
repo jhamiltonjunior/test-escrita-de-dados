@@ -37,19 +37,43 @@ func printStatus(totalInserts int, start time.Time) {
 }
 
 func main() {
+	done := make(chan struct{})
 	initialTime := time.Now()
-	mysql := connectdb.MySQLConnect{}
+
+	connReader := connectdb.NewConnectionDB("127.0.0.1", "root", "0000", "teste_leitura_de_dados")
+
+	dbReader, err := connReader.Connection()
+	if err != nil {
+		panic(err)
+	}
+	defer func(close *sql.DB) {
+		if err = close.Close(); err != nil {
+			panic(err)
+		}
+	}(dbReader)
+
+	connWriter := connectdb.NewConnectionDB("127.0.0.1", "root", "0000", "teste_escrita_de_dados")
+
+	dbWriter, err := connWriter.Connection()
+	if err != nil {
+		panic(err)
+	}
+	defer func(close *sql.DB) {
+		if err = close.Close(); err != nil {
+			panic(err)
+		}
+	}(dbWriter)
+
+	//defer close(done)
 
 	start := time.Now()
 
 	totalInserts := 0
 	go func() {
-		for i := 0; i < 100; i++ {
-			// Simulando inserção de dados
+		for _ = range done {
 			time.Sleep(100 * time.Millisecond)
-			totalInserts += 10
+			totalInserts += 1
 
-			// Atualiza o terminal
 			printStatus(totalInserts, start)
 		}
 	}()
@@ -58,12 +82,13 @@ func main() {
 	ln := 1000
 
 	for i := 0; i < ln; i++ {
+		done <- struct{}{}
 		users := HTTPGet("https://jsonplaceholder.typicode.com/users")
 
-		inserirVariasLinhas(&mysql, users, ln*len(users), &actual)
+		inserirVariasLinhas(dbReader, users, ln*len(users), &actual)
 	}
 
-	migrarDados(&mysql)
+	migrarDados(dbReader, dbWriter, done)
 
 	finalTime := time.Now()
 	fmt.Printf("\nTempo de execucao do Script: %v", finalTime.Sub(initialTime))
@@ -74,8 +99,6 @@ func HTTPGet(url string) []User {
 	if err != nil {
 		panic(err)
 	}
-
-	//fmt.Println(resp.StatusCode)
 
 	body, _ := io.ReadAll(resp.Body)
 
@@ -96,21 +119,7 @@ func HTTPGet(url string) []User {
 	return users
 }
 
-func inserirVariasLinhas(mysql *connectdb.MySQLConnect, users []User, ln int, actual *int) {
-	db, err := connectdb.NewConnectionDB(mysql, "127.0.0.1", "root", "0000", "teste_leitura_de_dados")
-	if err != nil {
-		panic(err)
-	}
-	defer func(close *sql.DB) {
-		if err = close.Close(); err != nil {
-			panic(err)
-		}
-	}(db)
-
-	//_, err = db.Exec("DELETE FROM users;")
-	//if err != nil {
-	//	panic(err)
-	//}
+func inserirVariasLinhas(db *sql.DB, users []User, ln int, actual *int) {
 
 	for _, user := range users {
 		var name, email, password = user.Name, user.Email, user.Password
@@ -120,7 +129,7 @@ func inserirVariasLinhas(mysql *connectdb.MySQLConnect, users []User, ln int, ac
 			name, email, password,
 		)
 
-		_, err = db.Exec(query)
+		_, err := db.Exec(query)
 		if err != nil {
 			panic(err)
 		}
@@ -129,13 +138,8 @@ func inserirVariasLinhas(mysql *connectdb.MySQLConnect, users []User, ln int, ac
 	}
 }
 
-func migrarDados(mysql *connectdb.MySQLConnect) {
-	db, err := connectdb.NewConnectionDB(mysql, "127.0.0.1", "root", "0000", "teste_leitura_de_dados")
-	if err != nil {
-		return
-	}
-
-	rows, err := db.Query("SELECT id, name, email, password FROM users;")
+func migrarDados(dbReader, dbBeWriter *sql.DB, done chan struct{}) {
+	rows, err := dbReader.Query("SELECT id, name, email, password FROM users;")
 	if err != nil {
 		panic(err)
 	}
@@ -151,6 +155,7 @@ func migrarDados(mysql *connectdb.MySQLConnect) {
 	var users []User
 
 	for rows.Next() {
+
 		totalLinhas++
 
 		var id int
@@ -163,22 +168,10 @@ func migrarDados(mysql *connectdb.MySQLConnect) {
 		users = append(users, User{id, name, email, password})
 	}
 
-	//fmt.Println(User)
-
-	dbBeWriter, err := connectdb.NewConnectionDB(mysql, "127.0.0.1", "root", "0000", "teste_escrita_de_dados")
-	if err != nil {
-		return
-	}
-
-	_, err = dbBeWriter.Exec("DELETE FROM users;")
-	if err != nil {
-		panic(err)
-	}
-
 	actual := 1
 
-	// Iterando sobre os resultados
 	for _, user := range users {
+
 		var name, email, password = user.Name, user.Email, user.Password
 
 		query := fmt.Sprintf(
@@ -192,6 +185,9 @@ func migrarDados(mysql *connectdb.MySQLConnect) {
 		}
 		fmt.Printf("\rSalvando %d/%d", actual, totalLinhas)
 		actual++
+		done <- struct{}{}
 	}
 	fmt.Println("\nTransferência de dados concluída")
+
+	close(done)
 }

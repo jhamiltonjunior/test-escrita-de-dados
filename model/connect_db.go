@@ -7,13 +7,15 @@ import (
 )
 
 type ConnectDB interface {
-	Connection(host, user, pass, db string) (*sql.DB, error)
+	Connection() (*sql.DB, error)
 }
 
-type MySQLConnect struct{}
+type MySQLConnect struct {
+	host, user, pass, database string
+}
 
-func (m *MySQLConnect) Connection(host, user, pass, database string) (*sql.DB, error) {
-	dsn := user + ":" + pass + "@tcp(" + host + ":3306)/" + database
+func (m *MySQLConnect) Connection() (*sql.DB, error) {
+	dsn := m.user + ":" + m.pass + "@tcp(" + m.host + ":3306)/" + m.database
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao conectar ao banco de dados: %w", err)
@@ -27,6 +29,11 @@ func (m *MySQLConnect) Connection(host, user, pass, database string) (*sql.DB, e
 	return db, nil
 }
 
-func NewConnectionDB(c ConnectDB, host, user, pass, db string) (*sql.DB, error) {
-	return c.Connection(host, user, pass, db)
+func NewConnectionDB(host, user, pass, db string) ConnectDB {
+	return &MySQLConnect{
+		host:     host,
+		pass:     pass,
+		user:     user,
+		database: db,
+	}
 }
