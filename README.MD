@@ -19,5 +19,10 @@ Para que isso acontecesse simutaneamente, eu tive que usar canais, dessa forma e
 
 ![](/img/codigo.png)
 
+## Com melhoria segundo o proximo print do terminal
+Note que antes levou 16 minutos para inserir apenas 9 mil itens, neste foi menos da metade do tempo e inseri 149 mil registros
+
+![img.png](img/img.png)
+
 ## Saida no terminal
 ![](/img/terminal.png)

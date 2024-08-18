@@ -37,7 +37,7 @@ func printStatus(totalInserts int, start time.Time) {
 }
 
 func main() {
-	done := make(chan struct{})
+	done := make(chan bool, 10)
 	initialTime := time.Now()
 
 	connReader := connectdb.NewConnectionDB("127.0.0.1", "root", "0000", "teste_leitura_de_dados")
@@ -70,11 +70,27 @@ func main() {
 
 	totalInserts := 0
 	go func() {
-		for _ = range done {
+		//if <-done {
+		//	fmt.Println(done)
+		//}
+		for {
 			time.Sleep(100 * time.Millisecond)
 			totalInserts += 1
 
 			printStatus(totalInserts, start)
+			//fmt.Println("ainda tem dados")
+
+			//stop := <-done
+
+			//if stop {
+			//	fmt.Println(done)
+			//	break
+			//}
+			//select {
+			//case <-done:
+			//	//fmt.Println("Parou")
+			//	return
+			//}
 		}
 	}()
 
@@ -82,10 +98,10 @@ func main() {
 	ln := 1000
 
 	for i := 0; i < ln; i++ {
-		done <- struct{}{}
+		//done <- bool{}
 		users := HTTPGet("https://jsonplaceholder.typicode.com/users")
 
-		inserirVariasLinhas(dbReader, users, ln*len(users), &actual)
+		inserirVariasLinhas(dbReader, users, ln*len(users), &actual, done)
 	}
 
 	migrarDados(dbReader, dbWriter, done)
@@ -119,7 +135,7 @@ func HTTPGet(url string) []User {
 	return users
 }
 
-func inserirVariasLinhas(db *sql.DB, users []User, ln int, actual *int) {
+func inserirVariasLinhas(db *sql.DB, users []User, ln int, actual *int, done chan bool) {
 
 	for _, user := range users {
 		var name, email, password = user.Name, user.Email, user.Password
@@ -135,10 +151,11 @@ func inserirVariasLinhas(db *sql.DB, users []User, ln int, actual *int) {
 		}
 		*actual++
 		fmt.Printf("\rSalvando %d/%d", *actual, ln)
+		//done <- false
 	}
 }
 
-func migrarDados(dbReader, dbBeWriter *sql.DB, done chan struct{}) {
+func migrarDados(dbReader, dbBeWriter *sql.DB, done chan bool) {
 	rows, err := dbReader.Query("SELECT id, name, email, password FROM users;")
 	if err != nil {
 		panic(err)
@@ -185,8 +202,9 @@ func migrarDados(dbReader, dbBeWriter *sql.DB, done chan struct{}) {
 		}
 		fmt.Printf("\rSalvando %d/%d", actual, totalLinhas)
 		actual++
-		done <- struct{}{}
+		//done <- false
 	}
+	done <- true
 	fmt.Println("\nTransferência de dados concluída")
 
 	close(done)
