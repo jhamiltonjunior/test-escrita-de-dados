@@ -64,33 +64,15 @@ func main() {
 		}
 	}(dbWriter)
 
-	//defer close(done)
-
 	start := time.Now()
 
 	totalInserts := 0
 	go func() {
-		//if <-done {
-		//	fmt.Println(done)
-		//}
 		for {
 			time.Sleep(100 * time.Millisecond)
 			totalInserts += 1
 
 			printStatus(totalInserts, start)
-			//fmt.Println("ainda tem dados")
-
-			//stop := <-done
-
-			//if stop {
-			//	fmt.Println(done)
-			//	break
-			//}
-			//select {
-			//case <-done:
-			//	//fmt.Println("Parou")
-			//	return
-			//}
 		}
 	}()
 
@@ -98,7 +80,6 @@ func main() {
 	ln := 1000
 
 	for i := 0; i < ln; i++ {
-		//done <- bool{}
 		users := HTTPGet("https://jsonplaceholder.typicode.com/users")
 
 		inserirVariasLinhas(dbReader, users, ln*len(users), &actual, done)
@@ -151,7 +132,6 @@ func inserirVariasLinhas(db *sql.DB, users []User, ln int, actual *int, done cha
 		}
 		*actual++
 		fmt.Printf("\rSalvando %d/%d", *actual, ln)
-		//done <- false
 	}
 }
 
@@ -202,7 +182,6 @@ func migrarDados(dbReader, dbBeWriter *sql.DB, done chan bool) {
 		}
 		fmt.Printf("\rSalvando %d/%d", actual, totalLinhas)
 		actual++
-		//done <- false
 	}
 	done <- true
 	fmt.Println("\nTransferência de dados concluída")
